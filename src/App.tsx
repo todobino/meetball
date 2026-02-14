@@ -747,7 +747,7 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
       await onSubmitResponse({
         id: createRandomString(12),
         name: cleanName,
-        email: cleanEmail || undefined,
+        ...(cleanEmail ? { email: cleanEmail } : {}),
         slotIds: [...selectedSlotIds].sort(),
         submittedAt: new Date().toISOString(),
         deviceId: ensureDeviceId(),
