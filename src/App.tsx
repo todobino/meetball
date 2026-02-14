@@ -56,7 +56,7 @@ type MeetingDocument = Omit<Meeting, 'responses'>
 const DEVICE_ID_STORAGE_KEY = 'meetball:device-id:v1'
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120]
+const DURATION_OPTIONS = [15, 30, 45, 60]
 
 function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(window.location.pathname))
@@ -142,6 +142,7 @@ function App() {
             </span>
             <span className="brand-label">Meetball</span>
           </button>
+          <p className="top-bar-tagline">Easy, peasy, scheduling.</p>
           <button
             type="button"
             className="ghost-button new-meeting-button"
@@ -254,8 +255,13 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
     ],
     [defaultTimeZone, timeZoneOptions],
   )
-  const selectedDayLabels = useMemo(
-    () => [...selectedDates].sort().map((dateKey) => formatDayLabel(dateKey)),
+  const selectedDayTiles = useMemo(
+    () =>
+      [...selectedDates].sort().map((dateKey) => ({
+        dateKey,
+        weekday: formatColumnWeekday(dateKey),
+        date: formatColumnDate(dateKey),
+      })),
     [selectedDates],
   )
   const createFormId = 'create-meeting-form'
@@ -440,6 +446,19 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
                   optionClassName="select-menu-option"
                 />
               </label>
+
+              <label className="field field-row-timezone">
+                <span>Time Zone</span>
+                <SelectMenu
+                  ariaLabel="Time Zone"
+                  value={timeZone}
+                  options={timeZoneSelectOptions}
+                  onChange={setTimeZone}
+                  triggerClassName="select-trigger"
+                  menuClassName="select-menu-surface"
+                  optionClassName="select-menu-option"
+                />
+              </label>
             </div>
 
             <div className="details-summary-column">
@@ -453,26 +472,16 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
                   <div className="summary-day-section">
                     <span className="summary-window-label">Proposed Days</span>
                     <div className="summary-day-rows">
-                      {selectedDayLabels.map((dayLabel) => (
-                        <div key={dayLabel} className="summary-day-row">
-                          {dayLabel}
+                      {selectedDayTiles.map((dayTile) => (
+                        <div key={dayTile.dateKey} className="summary-day-row">
+                          <span className="summary-day-weekday">{dayTile.weekday}</span>
+                          <span className="summary-day-date">{dayTile.date}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
               </aside>
-              <div className="timezone-badge-control">
-                <SelectMenu
-                  ariaLabel="Time Zone"
-                  value={timeZone}
-                  options={timeZoneSelectOptions}
-                  onChange={setTimeZone}
-                  triggerClassName="timezone-chip-select"
-                  menuClassName="select-menu-surface"
-                  optionClassName="select-menu-option"
-                />
-              </div>
             </div>
           </div>
 
@@ -807,6 +816,16 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
           <p>{meeting.description || 'Select your available times and add a response.'}</p>
         </div>
         <div className="public-share-action">
+          {!isAddingResponse && chosenSlot && (
+            <button
+              type="button"
+              className="schedule-cta-button schedule-cta-button-inline"
+              onClick={() => setIsCalendarDialogOpen(true)}
+            >
+              <span className="schedule-cta-title">Schedule It!</span>
+              <span className="schedule-cta-time">{chosenSlotLabel}</span>
+            </button>
+          )}
           {!isAddingResponse && (
             <button type="button" className="secondary-button nav-button" onClick={copyShareLink}>
               <span className="material-symbols-rounded button-icon" aria-hidden="true">
@@ -955,16 +974,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
             </div>
           </div>
           {selectionError && <p className="error-text public-selection-error">{selectionError}</p>}
-          {!isAddingResponse && chosenSlot && (
-            <button
-              type="button"
-              className="schedule-cta-button"
-              onClick={() => setIsCalendarDialogOpen(true)}
-            >
-              <span className="schedule-cta-title">Schedule!</span>
-              <span className="schedule-cta-time">{chosenSlotLabel}</span>
-            </button>
-          )}
 
           <div className="public-responses-list">
             {meeting.responses.length === 0 && <p className="subtle-text">No responses yet.</p>}

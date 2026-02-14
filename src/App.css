@@ -55,15 +55,31 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.38;
+  opacity: 0.72;
   background-image:
-    linear-gradient(0deg, rgba(28, 120, 132, 0.13) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(28, 120, 132, 0.13) 1px, transparent 1px),
-    linear-gradient(45deg, rgba(52, 140, 214, 0.08) 1px, transparent 1px),
-    linear-gradient(135deg, rgba(52, 140, 214, 0.08) 1px, transparent 1px);
-  background-size: 34px 34px, 34px 34px, 68px 68px, 68px 68px;
-  background-position: 0 0, 0 0, 0 0, 0 0;
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9), transparent 88%);
+    linear-gradient(132deg, rgba(14, 74, 108, 0.4) 0%, rgba(39, 136, 191, 0.2) 44%, rgba(9, 63, 96, 0.36) 100%),
+    repeating-linear-gradient(45deg, rgba(169, 235, 255, 0.44) 0 2px, transparent 2px 34px),
+    repeating-linear-gradient(-45deg, rgba(86, 193, 235, 0.36) 0 2px, transparent 2px 34px);
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  filter: saturate(1.05) contrast(1.02);
+  mask-image: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 1) 36%,
+    rgba(0, 0, 0, 0.86) 74%,
+    transparent 98%
+  );
+  animation: netting-pulse 22s ease-in-out infinite alternate;
+}
+
+@keyframes netting-pulse {
+  from {
+    opacity: 0.64;
+    filter: saturate(0.94) contrast(0.98);
+  }
+  to {
+    opacity: 0.82;
+    filter: saturate(1.12) contrast(1.05);
+  }
 }
 
 .top-bar {
@@ -80,6 +96,21 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-bottom: 0;
   border-radius: 1rem 1rem 0 0;
+}
+
+.top-bar-tagline {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  pointer-events: none;
+  color: rgba(241, 249, 255, 0.96);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 4px rgba(8, 23, 33, 0.35);
+  white-space: nowrap;
 }
 
 .app-frame {
@@ -252,7 +283,7 @@
   margin: 0;
   font-size: clamp(1.16rem, 2.25vw, 1.55rem);
   line-height: 1.1;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .public-title-block {
@@ -276,6 +307,8 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-left: auto;
   flex-shrink: 0;
@@ -536,6 +569,9 @@
   padding-right: 0.75rem;
   padding-top: 0;
   padding-bottom: 0;
+  background: rgba(77, 145, 223, 0.2);
+  border-top-left-radius: 0.82rem;
+  border-top-right-radius: 0.82rem;
   border-bottom: 1px solid rgba(17, 35, 44, 0.14);
 }
 
@@ -620,6 +656,23 @@
   box-shadow: 0 8px 18px rgba(15, 126, 96, 0.26);
   animation: schedule-pulse 1.2s ease-in-out infinite;
   cursor: pointer;
+}
+
+.schedule-cta-button-inline {
+  width: auto;
+  min-width: 10.8rem;
+  max-width: 15.5rem;
+  justify-items: center;
+  padding: 0.52rem 0.68rem;
+  text-align: center;
+}
+
+.schedule-cta-button-inline .schedule-cta-time {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .schedule-cta-title {
@@ -930,18 +983,19 @@
 
 .details-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.95rem;
   align-items: start;
 }
 
 .details-form-grid {
   min-width: 0;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-areas:
-    "name length"
-    "description description"
-    "start end";
+    "name name name name length length"
+    "description description description description description description"
+    "start start start end end end"
+    "timezone timezone timezone timezone timezone timezone";
   align-items: start;
 }
 
@@ -963,6 +1017,10 @@
 
 .field-row-window-end {
   grid-area: end;
+}
+
+.field-row-timezone {
+  grid-area: timezone;
 }
 
 .details-summary-column {
@@ -1030,54 +1088,40 @@
 .summary-day-rows {
   margin-top: 0.5rem;
   display: grid;
-  gap: 0.38rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.42rem;
 }
 
 .summary-day-row {
   width: 100%;
-  border-radius: 0.62rem;
-  border: 1px solid rgba(47, 127, 223, 0.2);
-  background: rgba(47, 127, 223, 0.1);
+  aspect-ratio: 1 / 1;
+  border-radius: 0.72rem;
+  border: 1px solid rgba(47, 127, 223, 0.28);
+  background: linear-gradient(155deg, rgba(228, 241, 255, 0.85) 0%, rgba(197, 226, 255, 0.58) 100%);
   color: #1f4f86;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 0.42rem 0.58rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.36rem;
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.details-timezone-chip {
-  max-width: 100%;
-  white-space: normal;
-  width: 100%;
+.summary-day-weekday {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #2a598b;
 }
 
-.timezone-badge-control {
-  width: 100%;
-}
-
-.timezone-chip-select {
-  width: 100%;
-  border-radius: 0.74rem;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #35505d;
-  font-weight: 700;
-  min-height: var(--control-height);
-  height: var(--control-height);
-  font-size: 1rem;
-  line-height: 1.2;
-  justify-content: space-between;
-  padding: 0.5rem 0.62rem 0.5rem 0.74rem;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.timezone-chip-select:hover,
-.timezone-chip-select:focus-visible {
-  background: #edf2f5;
-  border-color: transparent;
-}
-
-.timezone-chip-select:focus-visible {
-  box-shadow: 0 0 0 2px rgba(71, 96, 109, 0.2);
+.summary-day-date {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #133a66;
+  line-height: 1.12;
 }
 
 .field {
@@ -1227,14 +1271,9 @@
   color: #0f5852;
 }
 
-.timezone-chip-select:focus-visible {
-  border-color: transparent;
-  box-shadow: 0 0 0 2px rgba(71, 96, 109, 0.2);
-}
-
-.callout-row {
-  display: flex;
-  flex-wrap: wrap;
+  .callout-row {
+    display: flex;
+    flex-wrap: wrap;
   gap: 0.55rem;
 }
 
@@ -1676,7 +1715,17 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .netting-overlay {
+    animation: none;
+  }
+}
+
 @media (max-width: 960px) {
+  .top-bar-tagline {
+    display: none;
+  }
+
   .public-layout {
     grid-template-columns: 1fr;
     display: grid;
@@ -1706,7 +1755,8 @@
       "length"
       "description"
       "start"
-      "end";
+      "end"
+      "timezone";
   }
 
   .details-layout {
@@ -1738,6 +1788,8 @@
 
   .public-share-action {
     margin-left: 0;
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .public-status-banner {

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <defs>
+    <linearGradient id="netA" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E5E74"/>
+      <stop offset="1" stop-color="#22A8C8"/>
+    </linearGradient>
+    <linearGradient id="netB" x1="80" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4BC7FF"/>
+      <stop offset="1" stop-color="#1483B3"/>
+    </linearGradient>
+    <pattern id="mesh" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M-40 40L40 -40M0 80L80 0M40 120L120 40" stroke="url(#netA)" stroke-width="3.1" stroke-linecap="round"/>
+      <path d="M-40 40L40 120M0 0L80 80M40 -40L120 40" stroke="url(#netB)" stroke-width="2.3" stroke-linecap="round" opacity=".9"/>
+      <circle cx="0" cy="0" r="2.1" fill="#F3FDFF" fill-opacity=".82"/>
+      <circle cx="40" cy="40" r="2.8" fill="#78E4FF" fill-opacity=".68"/>
+      <circle cx="80" cy="80" r="2.1" fill="#F3FDFF" fill-opacity=".82"/>
+    </pattern>
+  </defs>
+  <rect width="240" height="240" fill="url(#mesh)"/>
+</svg>
