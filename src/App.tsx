@@ -64,6 +64,7 @@ function App() {
   const [isMeetingLoading, setIsMeetingLoading] = useState(false)
   const [meetingLoadError, setMeetingLoadError] = useState('')
   const [deviceId] = useState(() => ensureDeviceId())
+  const [mobileActionRoot, setMobileActionRoot] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(window.location.pathname))
@@ -160,6 +161,7 @@ function App() {
             <CreateMeetingView
               meetings={{}}
               ownerDeviceId={deviceId}
+              mobileActionRoot={mobileActionRoot}
               onCreate={async (meeting) => {
                 const createdMeeting = await createMeetingInFirestore(meeting)
                 navigate({ type: 'respond', slug: createdMeeting.slug })
@@ -199,6 +201,7 @@ function App() {
             <PublicMeetingView
               key={activeMeeting.slug}
               meeting={activeMeeting}
+              mobileActionRoot={mobileActionRoot}
               onSubmitResponse={async (response) => {
                 await addMeetingResponseToFirestore(activeMeeting.slug, response)
                 setActiveMeeting((previous) => {
@@ -214,6 +217,7 @@ function App() {
             />
           )}
         </main>
+        <div id="mobile-action-root" className="mobile-action-root" ref={setMobileActionRoot} />
       </div>
     </div>
   )
@@ -222,14 +226,14 @@ function App() {
 type CreateMeetingViewProps = {
   meetings: Record<string, Meeting>
   ownerDeviceId: string
+  mobileActionRoot: HTMLElement | null
   onCreate: (meeting: Meeting) => Promise<void>
 }
 
-function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingViewProps) {
+function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate }: CreateMeetingViewProps) {
   const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   const [step, setStep] = useState<1 | 2>(1)
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
   const [windowStart, setWindowStart] = useState('09:00')
   const [windowEnd, setWindowEnd] = useState('17:00')
   const [timeZone, setTimeZone] = useState('')
@@ -280,7 +284,6 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
     setErrorMessage('')
 
     const cleanTitle = title.trim()
-    const cleanDescription = description.trim()
     const startMinutes = timeToMinutes(windowStart)
     const endMinutes = timeToMinutes(windowEnd)
 
@@ -308,7 +311,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
     const meeting: Meeting = {
       slug,
       title: cleanTitle,
-      description: cleanDescription,
+      description: '',
       timeZone: timeZone || defaultTimeZone,
       windowStart,
       windowEnd,
@@ -344,13 +347,17 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
       <div className="panel-header create-header">
         <div className="create-title-wrap">
           <span className="create-step-icon" aria-hidden="true">
-            Step {step}
+            {step}
           </span>
-          <h1>{step === 1 ? 'Propose Dates to Meet' : 'Set Meeting Details'}</h1>
+          <h1>{step === 1 ? 'Propose Dates' : 'Set Meeting Details'}</h1>
         </div>
         <div className="create-header-actions">
           {step === 1 && (
-            <button type="button" className="primary-button nav-button" onClick={onContinue}>
+            <button
+              type="button"
+              className="primary-button nav-button create-top-continue-button"
+              onClick={onContinue}
+            >
               <span>Continue</span>
               <span className="material-symbols-rounded button-icon" aria-hidden="true">
                 arrow_forward
@@ -359,13 +366,22 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
           )}
           {step === 2 && (
             <>
-              <button type="button" className="ghost-button nav-button" onClick={() => setStep(1)}>
+              <button
+                type="button"
+                className="ghost-button nav-button create-top-back-button"
+                onClick={() => setStep(1)}
+              >
                 <span className="material-symbols-rounded button-icon" aria-hidden="true">
                   arrow_back
                 </span>
                 <span>Back</span>
               </button>
-              <button type="submit" form={createFormId} className="primary-button" disabled={isSubmitting}>
+              <button
+                type="submit"
+                form={createFormId}
+                className="primary-button create-top-create-button"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? 'Creating...' : 'Create Meeting Link'}
               </button>
             </>
@@ -374,7 +390,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
       </div>
 
       {step === 1 && (
-        <div className="create-step-body">
+        <div className="create-step-body create-step-body-step-one">
           <CalendarPicker selectedDates={selectedDates} onToggleDate={toggleDate} />
 
           {errorMessage && <p className="error-text">{errorMessage}</p>}
@@ -383,7 +399,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
       )}
 
       {step === 2 && (
-        <form id={createFormId} className="meeting-form create-step-body" onSubmit={onSubmit}>
+        <form id={createFormId} className="meeting-form create-step-body create-step-body-step-two" onSubmit={onSubmit}>
           <div className="details-layout">
             <div className="form-grid details-form-grid">
               <label className="field field-row-name">
@@ -407,17 +423,6 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
                   triggerClassName="select-trigger"
                   menuClassName="select-menu-surface"
                   optionClassName="select-menu-option"
-                />
-              </label>
-
-              <label className="field field-row-description">
-                <span>Quick Description</span>
-                <textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  maxLength={220}
-                  rows={3}
-                  placeholder="Share context so invitees know what this meeting is for."
                 />
               </label>
 
@@ -487,6 +492,45 @@ function CreateMeetingView({ meetings, ownerDeviceId, onCreate }: CreateMeetingV
 
           {errorMessage && <p className="error-text">{errorMessage}</p>}
         </form>
+      )}
+
+      {step === 1 && (
+        mobileActionRoot &&
+        createPortal(
+          <div className="create-mobile-action-bar">
+            <button
+              type="button"
+              className="primary-button nav-button create-mobile-continue-button"
+              onClick={onContinue}
+            >
+              <span>Continue</span>
+            </button>
+          </div>,
+          mobileActionRoot,
+        )
+      )}
+
+      {step === 2 && (
+        mobileActionRoot &&
+        createPortal(
+          <div className="create-mobile-action-bar create-mobile-action-bar-step-two">
+            <button type="button" className="ghost-button nav-button create-mobile-back-button" onClick={() => setStep(1)}>
+              <span className="material-symbols-rounded button-icon" aria-hidden="true">
+                arrow_back
+              </span>
+              <span>Back</span>
+            </button>
+            <button
+              type="submit"
+              form={createFormId}
+              className="primary-button create-mobile-create-button"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Meeting Link'}
+            </button>
+          </div>,
+          mobileActionRoot,
+        )
       )}
     </section>
   )
@@ -578,10 +622,11 @@ function CalendarPicker({ selectedDates, onToggleDate }: CalendarPickerProps) {
 
 type PublicMeetingViewProps = {
   meeting: Meeting
+  mobileActionRoot: HTMLElement | null
   onSubmitResponse: (response: MeetingResponse) => Promise<void>
 }
 
-function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps) {
+function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: PublicMeetingViewProps) {
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
   const [isAddingResponse, setIsAddingResponse] = useState(false)
   const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null)
@@ -775,7 +820,11 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     setSelectedSlotIds([])
     setIsAddingResponse(false)
     setSelectionError('')
-    setStatusMessage(`Response saved. Share this page link so others can add availability.`)
+    setStatusMessage(
+      isMobileView
+        ? 'Response saved!'
+        : 'Response saved. Share this page link so others can add availability.',
+    )
   }
 
   const responsesCountSplit = Boolean(activeResponsesSlotId) && meeting.responses.length > 0
@@ -880,7 +929,7 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
       <div className="public-top-row">
         <div className="public-title-block">
           <h1>{meeting.title}</h1>
-          <p>{meeting.description || 'Select your available times and add a response.'}</p>
+          <p>Select your available times and add a response.</p>
         </div>
         <div className="public-share-action">
           {!isAddingResponse && (
@@ -1034,25 +1083,26 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
         </div>
       )}
 
-      <div className="public-mobile-action-bar">
-        {isAddingResponse && (
-          <button type="button" className="secondary-button public-mobile-cancel-button" onClick={onCancelResponse}>
-            Cancel
-          </button>
+      {mobileActionRoot &&
+        createPortal(
+          <div className="public-mobile-action-bar">
+            {isAddingResponse && (
+              <button type="button" className="secondary-button public-mobile-cancel-button" onClick={onCancelResponse}>
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              className={`public-response-action-button public-mobile-respond-button ${
+                isAddingResponse ? 'is-confirm' : ''
+              }`}
+              onClick={onResponseAction}
+            >
+              <span>{isAddingResponse ? 'Confirm Response' : 'Respond'}</span>
+            </button>
+          </div>,
+          mobileActionRoot,
         )}
-        <button
-          type="button"
-          className={`public-response-action-button public-mobile-respond-button ${
-            isAddingResponse ? 'is-confirm' : ''
-          }`}
-          onClick={onResponseAction}
-        >
-          <span className="material-symbols-rounded button-icon" aria-hidden="true">
-            {isAddingResponse ? 'check' : 'add'}
-          </span>
-          <span>{isAddingResponse ? 'Confirm Response' : 'Respond'}</span>
-        </button>
-      </div>
 
       {isDialogOpen && (
         <div className="response-dialog-backdrop" onClick={() => setIsDialogOpen(false)}>
