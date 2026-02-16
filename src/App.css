@@ -16,6 +16,7 @@
   --control-height: 2.72rem;
   --public-column-pad-x: 0.58rem;
   --public-header-height: 2.6rem;
+  --mobile-action-bar-height: 4.1rem;
 }
 
 .app-shell {
@@ -412,6 +413,8 @@
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
@@ -523,11 +526,6 @@
   cursor: pointer;
 }
 
-.public-slot-schedule-picked {
-  border-color: #0b635d;
-  box-shadow: inset 0 0 0 1px rgba(8, 78, 74, 0.38), 0 0 0 2px rgba(15, 118, 110, 0.24);
-}
-
 .public-slot-hovered {
   border-color: #0f766e;
   box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.3);
@@ -590,6 +588,12 @@
   gap: 0.42rem;
 }
 
+.public-responses-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .public-responses-count {
   min-width: 1.6rem;
   height: 1.6rem;
@@ -645,121 +649,6 @@
 
 .public-selection-error {
   margin: -0.1rem 0 0;
-}
-
-.schedule-cta-button {
-  border: 1px solid #0f7a5d;
-  border-radius: 0.78rem;
-  background: linear-gradient(145deg, #19a378 0%, #0f7e60 100%);
-  color: #ffffff;
-  width: 100%;
-  padding: 0.55rem 0.68rem;
-  display: grid;
-  gap: 0.16rem;
-  justify-items: center;
-  box-shadow: 0 8px 18px rgba(15, 126, 96, 0.26);
-  animation: schedule-pulse 1.2s ease-in-out infinite;
-  cursor: pointer;
-}
-
-.schedule-cta-button-inline {
-  width: auto;
-  min-width: 10.8rem;
-  max-width: 15.5rem;
-  justify-items: center;
-  padding: 0.52rem 0.68rem;
-  text-align: center;
-}
-
-.schedule-cta-button-inline .schedule-cta-time {
-  display: block;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.schedule-cta-title {
-  font-size: 0.94rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.schedule-cta-time {
-  font-size: 0.74rem;
-  font-weight: 700;
-  line-height: 1.15;
-  opacity: 0.95;
-}
-
-.calendar-dialog {
-  position: relative;
-  display: grid;
-  gap: 0.58rem;
-}
-
-.calendar-dialog-close {
-  position: absolute;
-  top: 0.58rem;
-  right: 0.58rem;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.62rem;
-  border: 1px solid rgba(17, 35, 44, 0.16);
-  background: #f4f7f8;
-  color: #41555f;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.calendar-dialog-close:hover {
-  background: #ffffff;
-  border-color: rgba(17, 35, 44, 0.25);
-}
-
-.calendar-dialog-time {
-  margin: 0;
-  color: #32515f;
-  font-weight: 700;
-}
-
-.calendar-dialog-note {
-  margin: 0;
-  color: #5b6d77;
-  font-size: 0.86rem;
-}
-
-.calendar-option-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.calendar-option-card {
-  width: 100%;
-  border: 1px solid rgba(17, 35, 44, 0.14);
-  border-radius: 0.72rem;
-  background: #eef2f5;
-  color: #50626d;
-  padding: 0.58rem 0.66rem;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: not-allowed;
-  opacity: 0.88;
-}
-
-.calendar-option-title {
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.calendar-option-sub {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #6f818b;
 }
 
 .public-response-action-button {
@@ -860,6 +749,32 @@
   font-weight: 700;
 }
 
+.public-responses-close-button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.68rem;
+  border: 1px solid rgba(17, 35, 44, 0.18);
+  background: rgba(255, 255, 255, 0.85);
+  color: #2f4957;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.public-responses-close-button:hover {
+  background: #ffffff;
+  border-color: rgba(17, 35, 44, 0.28);
+}
+
+.public-mobile-action-bar {
+  display: none;
+}
+
+.public-responses-drawer-backdrop {
+  display: none;
+}
+
 .response-dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -913,16 +828,6 @@
   to {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
-  }
-}
-
-@keyframes schedule-pulse {
-  0%,
-  100% {
-    box-shadow: 0 8px 18px rgba(15, 126, 96, 0.26);
-  }
-  50% {
-    box-shadow: 0 10px 22px rgba(15, 126, 96, 0.42);
   }
 }
 
@@ -1739,8 +1644,68 @@
     gap: 0.75rem;
   }
 
-  .public-responses-sidebar {
-    max-height: 16rem;
+  .public-layout > .public-responses-sidebar {
+    display: none;
+  }
+
+  .public-slots-section {
+    overscroll-behavior: none;
+  }
+
+  .public-panel {
+    padding-bottom: calc(var(--mobile-action-bar-height) + env(safe-area-inset-bottom) + 0.8rem);
+  }
+
+  .public-top-respond-button,
+  .public-top-cancel-button {
+    display: none;
+  }
+
+  .public-mobile-action-bar {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(0.45rem + env(safe-area-inset-bottom));
+    z-index: 26;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.42rem;
+    padding: 0.5rem;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(17, 35, 44, 0.16);
+    background: rgba(248, 252, 253, 0.96);
+    box-shadow: 0 14px 28px rgba(17, 35, 44, 0.22);
+    backdrop-filter: blur(10px);
+  }
+
+  .public-mobile-respond-button {
+    flex: 1;
+    width: 100%;
+    min-height: 3.05rem;
+    font-size: 1rem;
+  }
+
+  .public-mobile-cancel-button {
+    min-height: 3.05rem;
+  }
+
+  .public-responses-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 27;
+    background: rgba(8, 16, 24, 0.28);
+    display: flex;
+    align-items: flex-end;
+    padding: 0.75rem 0.75rem calc(var(--mobile-action-bar-height) + env(safe-area-inset-bottom) + 0.5rem);
+  }
+
+  .public-responses-drawer {
+    width: 100%;
+    max-height: min(56dvh, 24rem);
+    border-radius: 1rem;
+    box-shadow: 0 18px 34px rgba(17, 35, 44, 0.24);
+    animation: responses-drawer-rise 180ms ease;
   }
 
   .slot-groups,
@@ -1821,15 +1786,15 @@
   }
 
   .public-share-button {
-    width: 2.32rem;
-    height: 2.32rem;
-    padding: 0;
+    width: auto;
+    min-height: 2.32rem;
+    padding: 0.38rem 0.72rem;
     border-radius: 0.8rem;
     justify-content: center;
   }
 
   .public-share-button-label {
-    display: none;
+    display: inline;
   }
 
   .public-response-action-button {
@@ -1839,6 +1804,11 @@
     gap: 0.2rem;
     font-size: 0.9rem;
     white-space: nowrap;
+  }
+
+  .public-mobile-action-bar {
+    left: 0.62rem;
+    right: 0.62rem;
   }
 
   .public-status-banner {
@@ -1882,5 +1852,16 @@
 
   .calendar-month-title {
     min-width: 9.5rem;
+  }
+}
+
+@keyframes responses-drawer-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

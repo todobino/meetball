@@ -583,11 +583,14 @@ type PublicMeetingViewProps = {
 
 function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps) {
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
-  const [chosenSlotId, setChosenSlotId] = useState<string | null>(null)
-  const [isCalendarDialogOpen, setIsCalendarDialogOpen] = useState(false)
   const [isAddingResponse, setIsAddingResponse] = useState(false)
   const [dragMode, setDragMode] = useState<'add' | 'remove' | null>(null)
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null)
+  const [mobileFocusedSlotId, setMobileFocusedSlotId] = useState<string | null>(null)
+  const [isMobileResponsesOpen, setIsMobileResponsesOpen] = useState(false)
+  const [isMobileView, setIsMobileView] = useState(
+    () => window.matchMedia('(max-width: 960px)').matches,
+  )
   const [hoveredResponseId, setHoveredResponseId] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [name, setName] = useState('')
@@ -601,6 +604,8 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
   const slots = useMemo(() => buildSlots(meeting), [meeting])
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots])
   const selectedSet = useMemo(() => new Set(selectedSlotIds), [selectedSlotIds])
+  const activeResponsesSlotId =
+    isMobileView && isMobileResponsesOpen ? mobileFocusedSlotId : hoveredSlotId
   const orderedDateKeys = useMemo(() => [...meeting.dates].sort(), [meeting.dates])
   const slotResponseIdsMap = useMemo(() => {
     const map = new Map<string, string[]>()
@@ -631,8 +636,8 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     return maxCount
   }, [slotResponseCountMap])
   const hoveredSlotResponderIds = useMemo(
-    () => new Set(hoveredSlotId ? slotResponseIdsMap.get(hoveredSlotId) || [] : []),
-    [hoveredSlotId, slotResponseIdsMap],
+    () => new Set(activeResponsesSlotId ? slotResponseIdsMap.get(activeResponsesSlotId) || [] : []),
+    [activeResponsesSlotId, slotResponseIdsMap],
   )
   const hoveredResponseSlotIds = useMemo(() => {
     if (!hoveredResponseId) {
@@ -641,10 +646,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     const response = meeting.responses.find((item) => item.id === hoveredResponseId)
     return new Set(response?.slotIds || [])
   }, [hoveredResponseId, meeting.responses])
-  const chosenSlot = useMemo(
-    () => (chosenSlotId ? slots.find((slot) => slot.id === chosenSlotId) || null : null),
-    [chosenSlotId, slots],
-  )
 
   useEffect(() => {
     const onPointerUp = () => setDragMode(null)
@@ -653,22 +654,17 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
   }, [])
 
   useEffect(() => {
-    if (!chosenSlotId || isAddingResponse) {
-      return
-    }
-
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (target?.closest('.public-slot') || target?.closest('.schedule-cta-button') || target?.closest('.calendar-dialog')) {
-        return
+    const mediaQuery = window.matchMedia('(max-width: 960px)')
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsMobileView(event.matches)
+      if (!event.matches) {
+        setIsMobileResponsesOpen(false)
+        setMobileFocusedSlotId(null)
       }
-      setChosenSlotId(null)
-      setIsCalendarDialogOpen(false)
     }
-
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [chosenSlotId, isAddingResponse])
+    mediaQuery.addEventListener('change', onChange)
+    return () => mediaQuery.removeEventListener('change', onChange)
+  }, [])
 
   const applySelection = (slotId: string, mode: 'add' | 'remove') => {
     setSelectedSlotIds((previous) => {
@@ -712,10 +708,10 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     if (!isAddingResponse) {
       setIsAddingResponse(true)
       setSelectedSlotIds([])
-      setChosenSlotId(null)
-      setIsCalendarDialogOpen(false)
       setSelectionError('')
       setStatusMessage('')
+      setIsMobileResponsesOpen(false)
+      setMobileFocusedSlotId(null)
       return
     }
 
@@ -735,6 +731,11 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     setSelectionError('')
     setDialogError('')
     setCopiedStatus('idle')
+  }
+
+  const closeMobileResponsesDrawer = () => {
+    setIsMobileResponsesOpen(false)
+    setMobileFocusedSlotId(null)
   }
 
   const onSubmitDialog = async (event: FormEvent<HTMLFormElement>) => {
@@ -777,7 +778,7 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
     setStatusMessage(`Response saved. Share this page link so others can add availability.`)
   }
 
-  const responsesCountSplit = Boolean(hoveredSlotId) && meeting.responses.length > 0
+  const responsesCountSplit = Boolean(activeResponsesSlotId) && meeting.responses.length > 0
   const responsesCountLabel = responsesCountSplit
     ? `${hoveredSlotResponderIds.size}/${meeting.responses.length}`
     : String(meeting.responses.length)
@@ -789,6 +790,75 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
           ? { label: 'Okay', tone: 'okay' as const }
           : { label: 'Poor', tone: 'poor' as const }
       : null
+
+  const responsesPanelContent = (
+    <>
+      <div className="public-responses-header">
+        <h2>Responses</h2>
+        <div className="public-responses-controls">
+          <div className="public-responses-meta">
+            {responsesQuality && (
+              <span className={`public-responses-quality is-${responsesQuality.tone}`}>
+                {responsesQuality.label}
+              </span>
+            )}
+            <span className={`public-responses-count ${responsesCountSplit ? 'is-split' : ''}`}>
+              {responsesCountLabel}
+            </span>
+          </div>
+          {isMobileResponsesOpen && (
+            <button
+              type="button"
+              className="public-responses-close-button"
+              onClick={closeMobileResponsesDrawer}
+              aria-label="Close responses drawer"
+            >
+              <span className="material-symbols-rounded button-icon" aria-hidden="true">
+                close
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+      {selectionError && <p className="error-text public-selection-error">{selectionError}</p>}
+
+      <div className="public-responses-list">
+        {meeting.responses.length === 0 && <p className="subtle-text">No responses yet.</p>}
+        {meeting.responses.map((response) => (
+          <article
+            key={response.id}
+            className={`public-response-card ${
+              hoveredResponseId === response.id ? 'public-response-card-active' : ''
+            } ${
+              activeResponsesSlotId && !hoveredSlotResponderIds.has(response.id)
+                ? 'public-response-card-dim'
+                : ''
+            } ${
+              activeResponsesSlotId && hoveredSlotResponderIds.has(response.id)
+                ? 'public-response-card-linked'
+                : ''
+            }`}
+            onMouseEnter={() => setHoveredResponseId(response.id)}
+            onMouseLeave={() => setHoveredResponseId(null)}
+          >
+            <p
+              className={
+                activeResponsesSlotId && hoveredSlotResponderIds.has(response.id)
+                  ? 'public-response-name-highlighted'
+                  : ''
+              }
+            >
+              {response.name}
+            </p>
+            <span className="public-response-slot-count">{response.slotIds.length} Slots</span>
+          </article>
+        ))}
+      </div>
+      <div className="public-responses-footer">
+        <p className="public-timezone-text">{formatTimeZoneLabel(meeting.timeZone)}</p>
+      </div>
+    </>
+  )
 
   const copiedStatusToast =
     copiedStatus !== 'idle'
@@ -804,9 +874,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
           </div>
         )
       : null
-  const chosenSlotLabel = chosenSlot
-    ? `${formatCompactDate(chosenSlot.dateKey)} @ ${formatMinutes(chosenSlot.startMinutes)}`
-    : ''
 
   return (
     <section className="panel animate-in public-panel">
@@ -816,16 +883,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
           <p>{meeting.description || 'Select your available times and add a response.'}</p>
         </div>
         <div className="public-share-action">
-          {!isAddingResponse && chosenSlot && (
-            <button
-              type="button"
-              className="schedule-cta-button schedule-cta-button-inline"
-              onClick={() => setIsCalendarDialogOpen(true)}
-            >
-              <span className="schedule-cta-title">Schedule It!</span>
-              <span className="schedule-cta-time">{chosenSlotLabel}</span>
-            </button>
-          )}
           {!isAddingResponse && (
             <button
               type="button"
@@ -840,13 +897,19 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
             </button>
           )}
           {isAddingResponse && (
-            <button type="button" className="secondary-button" onClick={onCancelResponse}>
+            <button
+              type="button"
+              className="secondary-button public-top-cancel-button"
+              onClick={onCancelResponse}
+            >
               Cancel
             </button>
           )}
           <button
             type="button"
-            className={`public-response-action-button ${isAddingResponse ? 'is-confirm' : ''}`}
+            className={`public-response-action-button public-top-respond-button ${
+              isAddingResponse ? 'is-confirm' : ''
+            }`}
             onClick={onResponseAction}
           >
             <span className="material-symbols-rounded button-icon" aria-hidden="true">
@@ -903,7 +966,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
                 <div className="public-day-slots">
                   {(slotsByDate[dateKey] || []).map((slot) => {
                     const selected = selectedSet.has(slot.id)
-                    const schedulePicked = !isAddingResponse && chosenSlotId === slot.id
                     const responseCount = slotResponseCountMap.get(slot.id) || 0
                     let popularityClass = ''
                     if (responseCount > 0 && maxSlotResponseCount > 0) {
@@ -931,10 +993,8 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
                         className={`public-slot ${selected ? 'public-slot-selected' : ''} ${
                           popularityClass
                         } ${
-                          schedulePicked ? 'public-slot-schedule-picked' : ''
-                        } ${
                           !isAddingResponse ? 'public-slot-readonly' : ''
-                        } ${hoveredSlotId === slot.id ? 'public-slot-hovered' : ''} ${
+                        } ${activeResponsesSlotId === slot.id ? 'public-slot-hovered' : ''} ${
                           linkedToHoveredResponse ? 'public-slot-linked-response' : ''
                         } ${shouldDimForHoveredResponse ? 'public-slot-dim' : ''
                         }`}
@@ -942,16 +1002,12 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
                         onPointerEnter={() => onSlotPointerEnter(slot.id)}
                         onMouseEnter={() => setHoveredSlotId(slot.id)}
                         onMouseLeave={() => setHoveredSlotId(null)}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          if (!isAddingResponse) {
-                            if (chosenSlotId === slot.id) {
-                              setChosenSlotId(null)
-                              setIsCalendarDialogOpen(false)
-                            } else {
-                              setChosenSlotId(slot.id)
-                            }
+                        onClick={() => {
+                          if (isAddingResponse || !isMobileView) {
+                            return
                           }
+                          setMobileFocusedSlotId(slot.id)
+                          setIsMobileResponsesOpen(true)
                         }}
                       >
                         {formatMinutes(slot.startMinutes)}
@@ -964,58 +1020,38 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
           </div>
         </section>
 
-        <aside className="public-responses-sidebar">
-          <div className="public-responses-header">
-            <h2>Responses</h2>
-            <div className="public-responses-meta">
-              {responsesQuality && (
-                <span className={`public-responses-quality is-${responsesQuality.tone}`}>
-                  {responsesQuality.label}
-                </span>
-              )}
-              <span className={`public-responses-count ${responsesCountSplit ? 'is-split' : ''}`}>
-                {responsesCountLabel}
-              </span>
-            </div>
-          </div>
-          {selectionError && <p className="error-text public-selection-error">{selectionError}</p>}
+        <aside className="public-responses-sidebar">{responsesPanelContent}</aside>
+      </div>
 
-          <div className="public-responses-list">
-            {meeting.responses.length === 0 && <p className="subtle-text">No responses yet.</p>}
-            {meeting.responses.map((response) => (
-              <article
-                key={response.id}
-                className={`public-response-card ${
-                  hoveredResponseId === response.id ? 'public-response-card-active' : ''
-                } ${
-                  hoveredSlotId && !hoveredSlotResponderIds.has(response.id)
-                    ? 'public-response-card-dim'
-                    : ''
-                } ${
-                  hoveredSlotId && hoveredSlotResponderIds.has(response.id)
-                    ? 'public-response-card-linked'
-                    : ''
-                }`}
-                onMouseEnter={() => setHoveredResponseId(response.id)}
-                onMouseLeave={() => setHoveredResponseId(null)}
-              >
-                <p
-                  className={
-                    hoveredSlotId && hoveredSlotResponderIds.has(response.id)
-                      ? 'public-response-name-highlighted'
-                      : ''
-                  }
-                >
-                  {response.name}
-                </p>
-                <span className="public-response-slot-count">{response.slotIds.length} Slots</span>
-              </article>
-            ))}
-          </div>
-          <div className="public-responses-footer">
-            <p className="public-timezone-text">{formatTimeZoneLabel(meeting.timeZone)}</p>
-          </div>
-        </aside>
+      {isMobileResponsesOpen && !isAddingResponse && (
+        <div className="public-responses-drawer-backdrop" onClick={closeMobileResponsesDrawer}>
+          <aside
+            className="public-responses-sidebar public-responses-drawer"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {responsesPanelContent}
+          </aside>
+        </div>
+      )}
+
+      <div className="public-mobile-action-bar">
+        {isAddingResponse && (
+          <button type="button" className="secondary-button public-mobile-cancel-button" onClick={onCancelResponse}>
+            Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          className={`public-response-action-button public-mobile-respond-button ${
+            isAddingResponse ? 'is-confirm' : ''
+          }`}
+          onClick={onResponseAction}
+        >
+          <span className="material-symbols-rounded button-icon" aria-hidden="true">
+            {isAddingResponse ? 'check' : 'add'}
+          </span>
+          <span>{isAddingResponse ? 'Confirm Response' : 'Respond'}</span>
+        </button>
       </div>
 
       {isDialogOpen && (
@@ -1054,41 +1090,6 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {isCalendarDialogOpen && chosenSlot && (
-        <div className="response-dialog-backdrop" onClick={() => setIsCalendarDialogOpen(false)}>
-          <div className="response-dialog calendar-dialog" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              className="calendar-dialog-close"
-              onClick={() => setIsCalendarDialogOpen(false)}
-              aria-label="Close add to calendar dialog"
-            >
-              <span className="material-symbols-rounded button-icon" aria-hidden="true">
-                close
-              </span>
-            </button>
-            <h3>Add to Calendar</h3>
-            <p className="calendar-dialog-time">{chosenSlotLabel}</p>
-            <p className="calendar-dialog-note">Scheduling functionality coming soon.</p>
-
-            <div className="calendar-option-list">
-              <button type="button" className="calendar-option-card" disabled>
-                <span className="calendar-option-title">Google Calendar</span>
-                <span className="calendar-option-sub">Coming soon</span>
-              </button>
-              <button type="button" className="calendar-option-card" disabled>
-                <span className="calendar-option-title">Outlook</span>
-                <span className="calendar-option-sub">Coming soon</span>
-              </button>
-              <button type="button" className="calendar-option-card" disabled>
-                <span className="calendar-option-title">iCalendar</span>
-                <span className="calendar-option-sub">Coming soon</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -1480,17 +1481,6 @@ function formatColumnWeekday(dateKey: string): string {
   })
     .format(date)
     .toUpperCase()
-}
-
-function formatCompactDate(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'numeric',
-    day: 'numeric',
-    year: '2-digit',
-    timeZone: 'UTC',
-  }).format(date)
 }
 
 function formatTimeZoneLabel(timeZone: string): string {
