@@ -36,8 +36,8 @@ type Meeting = {
 type SlotDefinition = {
   id: string
   dateKey: string
-  startMinutes: number
-  endMinutes: number
+  startLabel: string
+  startsAtMs: number
 }
 
 type CalendarMonth = {
@@ -649,13 +649,18 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
   const [statusMessage, setStatusMessage] = useState('')
   const [copiedStatus, setCopiedStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
 
+  const viewerTimeZone = useMemo(() => resolveCurrentTimeZone(), [])
+  const viewerTimeZoneLabel = useMemo(
+    () => formatTimeZoneLabel(viewerTimeZone),
+    [viewerTimeZone],
+  )
   const shareLink = `${window.location.origin}/m/${meeting.slug}`
-  const slots = useMemo(() => buildSlots(meeting), [meeting])
+  const slots = useMemo(() => buildSlots(meeting, viewerTimeZone), [meeting, viewerTimeZone])
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots])
   const selectedSet = useMemo(() => new Set(selectedSlotIds), [selectedSlotIds])
   const activeResponsesSlotId =
     isMobileView && isMobileResponsesOpen ? mobileFocusedSlotId : hoveredSlotId
-  const orderedDateKeys = useMemo(() => [...meeting.dates].sort(), [meeting.dates])
+  const orderedDateKeys = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate])
   const slotResponseIdsMap = useMemo(() => {
     const map = new Map<string, string[]>()
     meeting.responses.forEach((response) => {
@@ -908,7 +913,7 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
         ))}
       </div>
       <div className="public-responses-footer">
-        <p className="public-timezone-text">{formatTimeZoneLabel(meeting.timeZone)}</p>
+        <p className="public-timezone-text">Slots shown in {viewerTimeZoneLabel}</p>
       </div>
     </>
   )
@@ -933,7 +938,7 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
       <div className="public-top-row">
         <div className="public-title-block">
           <h1>{meeting.title}</h1>
-          <p>Click respond to select your availability.</p>
+          <p>Slots shown in {viewerTimeZoneLabel}</p>
         </div>
         <div className="public-share-action">
           {!isAddingResponse && (
@@ -1062,7 +1067,7 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
                           setIsMobileResponsesOpen(true)
                         }}
                       >
-                        {formatMinutes(slot.startMinutes)}
+                        {slot.startLabel}
                       </button>
                     )
                   })}
@@ -1487,7 +1492,7 @@ function createRandomString(length: number): string {
   return output.join('')
 }
 
-function buildSlots(meeting: Meeting): SlotDefinition[] {
+function buildSlots(meeting: Meeting, viewerTimeZone: string): SlotDefinition[] {
   const startMinutes = timeToMinutes(meeting.windowStart)
   const endMinutes = timeToMinutes(meeting.windowEnd)
 
@@ -1498,20 +1503,45 @@ function buildSlots(meeting: Meeting): SlotDefinition[] {
   const slots: SlotDefinition[] = []
 
   for (const dateKey of [...meeting.dates].sort()) {
+    const [year, month, day] = dateKey.split('-').map(Number)
+    const isDateValid =
+      Number.isFinite(year) &&
+      Number.isFinite(month) &&
+      Number.isFinite(day) &&
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= 31
+    if (!isDateValid) {
+      continue
+    }
+
     for (
       let cursor = startMinutes;
       cursor + meeting.durationMinutes <= endMinutes;
       cursor += meeting.durationMinutes
     ) {
+      const startHour = Math.floor(cursor / 60)
+      const startMinute = cursor % 60
+      const startsAtMs = toUtcTimestampFromZonedDateTime(
+        year,
+        month,
+        day,
+        startHour,
+        startMinute,
+        meeting.timeZone,
+      )
+
       slots.push({
         id: `${dateKey}-${cursor}`,
-        dateKey,
-        startMinutes: cursor,
-        endMinutes: cursor + meeting.durationMinutes,
+        dateKey: formatDateKeyInTimeZone(startsAtMs, viewerTimeZone),
+        startLabel: formatTimeInTimeZone(startsAtMs, viewerTimeZone),
+        startsAtMs,
       })
     }
   }
 
+  slots.sort((a, b) => a.startsAtMs - b.startsAtMs || a.id.localeCompare(b.id))
   return slots
 }
 
@@ -1575,6 +1605,104 @@ function formatTimeZoneLabel(timeZone: string): string {
     return zonePart ? `${timeZone} (${zonePart})` : timeZone
   } catch {
     return timeZone
+  }
+}
+
+function resolveCurrentTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+}
+
+function toUtcTimestampFromZonedDateTime(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): number {
+  const targetMinuteStamp = Date.UTC(year, month - 1, day, hour, minute) / 60000
+  let estimate = Date.UTC(year, month - 1, day, hour, minute)
+
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const parts = getDateTimePartsInTimeZone(estimate, timeZone)
+    if (!parts) {
+      return estimate
+    }
+
+    const estimateMinuteStamp =
+      Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) / 60000
+    const deltaMinutes = targetMinuteStamp - estimateMinuteStamp
+
+    if (deltaMinutes === 0) {
+      return estimate
+    }
+
+    estimate += deltaMinutes * 60 * 1000
+  }
+
+  return estimate
+}
+
+function getDateTimePartsInTimeZone(
+  timestampMs: number,
+  timeZone: string,
+): { year: number; month: number; day: number; hour: number; minute: number } | null {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+
+    const parts = formatter.formatToParts(new Date(timestampMs))
+    const year = Number(parts.find((part) => part.type === 'year')?.value)
+    const month = Number(parts.find((part) => part.type === 'month')?.value)
+    const day = Number(parts.find((part) => part.type === 'day')?.value)
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value)
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value)
+
+    if (
+      Number.isNaN(year) ||
+      Number.isNaN(month) ||
+      Number.isNaN(day) ||
+      Number.isNaN(hour) ||
+      Number.isNaN(minute)
+    ) {
+      return null
+    }
+
+    return { year, month, day, hour, minute }
+  } catch {
+    return null
+  }
+}
+
+function formatDateKeyInTimeZone(timestampMs: number, timeZone: string): string {
+  const parts = getDateTimePartsInTimeZone(timestampMs, timeZone)
+  if (!parts) {
+    return new Date(timestampMs).toISOString().slice(0, 10)
+  }
+
+  const month = String(parts.month).padStart(2, '0')
+  const day = String(parts.day).padStart(2, '0')
+  return `${parts.year}-${month}-${day}`
+}
+
+function formatTimeInTimeZone(timestampMs: number, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(timestampMs))
+  } catch {
+    return formatMinutes(
+      new Date(timestampMs).getUTCHours() * 60 + new Date(timestampMs).getUTCMinutes(),
+    )
   }
 }
 
