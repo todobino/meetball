@@ -1684,6 +1684,14 @@
 }
 
 @media (max-width: 960px) {
+  .create-panel .create-header {
+    margin-bottom: 0.8rem;
+  }
+
+  .create-step-body-step-two .details-layout {
+    padding-bottom: 0.6rem;
+  }
+
   .top-bar-tagline {
     display: none;
   }
@@ -1794,6 +1802,10 @@
   .create-top-continue-button,
   .create-top-back-button,
   .create-top-create-button {
+    display: none;
+  }
+
+  .create-header-actions {
     display: none;
   }
 
@@ -1915,8 +1927,7 @@
   }
 
   .create-header {
-    flex-direction: column;
-    align-items: flex-start;
+    display: block;
   }
 
   .panel {
