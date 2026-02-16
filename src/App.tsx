@@ -414,7 +414,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                 />
               </label>
 
-              <label className="field field-row-length">
+              <div className="field field-row-length">
                 <span>Meeting Length</span>
                 <SelectMenu
                   ariaLabel="Meeting Length"
@@ -425,9 +425,9 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                   menuClassName="select-menu-surface"
                   optionClassName="select-menu-option"
                 />
-              </label>
+              </div>
 
-              <label className="field field-row-window-start">
+              <div className="field field-row-window-start">
                 <span>Window Start</span>
                 <SelectMenu
                   ariaLabel="Window Start"
@@ -438,9 +438,9 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                   menuClassName="select-menu-surface"
                   optionClassName="select-menu-option"
                 />
-              </label>
+              </div>
 
-              <label className="field field-row-window-end">
+              <div className="field field-row-window-end">
                 <span>Window End</span>
                 <SelectMenu
                   ariaLabel="Window End"
@@ -451,9 +451,9 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                   menuClassName="select-menu-surface"
                   optionClassName="select-menu-option"
                 />
-              </label>
+              </div>
 
-              <label className="field field-row-timezone">
+              <div className="field field-row-timezone">
                 <span>Time Zone</span>
                 <SelectMenu
                   ariaLabel="Time Zone"
@@ -464,7 +464,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                   menuClassName="select-menu-surface"
                   optionClassName="select-menu-option"
                 />
-              </label>
+              </div>
             </div>
 
             <div className="details-summary-column">
