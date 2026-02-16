@@ -1642,6 +1642,7 @@
 
   .public-layout {
     gap: 0.75rem;
+    padding-bottom: calc(var(--mobile-action-bar-height) + env(safe-area-inset-bottom) + 0.75rem);
   }
 
   .public-layout > .public-responses-sidebar {
