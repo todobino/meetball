@@ -243,7 +243,7 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const timeZoneOptions = useMemo(() => getSupportedTimeZones(), [])
-  const timeSelectOptions = useMemo<SelectOption[]>(() => buildTimeOptions(15), [])
+  const timeSelectOptions = useMemo<SelectOption[]>(() => buildTimeOptions(30), [])
   const durationSelectOptions = useMemo<SelectOption[]>(
     () =>
       DURATION_OPTIONS.map((option) => ({
@@ -332,7 +332,8 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
     }
   }
 
-  const timeWindowSummary = `${formatTimeRange(windowStart, windowEnd)} (${durationMinutes}-minute slots)`
+  const timeWindowSummary = `${formatMinutes(timeToMinutes(windowStart))} to ${formatMinutes(timeToMinutes(windowEnd))}`
+  const durationSummary = `${durationMinutes}-minute meeting`
   const onContinue = () => {
     if (selectedDates.length === 0) {
       setErrorMessage('Pick at least one day on the calendar.')
@@ -472,7 +473,8 @@ function CreateMeetingView({ meetings, ownerDeviceId, mobileActionRoot, onCreate
                 <div className="details-summary-badges">
                   <div className="summary-window-block">
                     <span className="summary-window-label">Meeting Window</span>
-                    <p>{timeWindowSummary}</p>
+                    <p className="summary-window-time">{timeWindowSummary}</p>
+                    <p className="summary-window-duration">{durationSummary}</p>
                   </div>
                   <div className="summary-day-section">
                     <span className="summary-window-label">Proposed Days</span>
@@ -586,35 +588,37 @@ function CalendarPicker({ selectedDates, onToggleDate }: CalendarPickerProps) {
         </button>
       </div>
 
-      <div className="weekday-row weekday-row-large" role="presentation">
-        {WEEKDAY_LABELS.map((weekday) => (
-          <span key={weekday}>{weekday}</span>
-        ))}
-      </div>
+      <div className="calendar-panel-body">
+        <div className="weekday-row weekday-row-large" role="presentation">
+          {WEEKDAY_LABELS.map((weekday) => (
+            <span key={weekday}>{weekday}</span>
+          ))}
+        </div>
 
-      <div className="calendar-grid calendar-grid-large">
-        {month.cells.map((value, index) => {
-          if (!value) {
-            return <span key={`${month.key}-blank-${index}`} className="calendar-blank" />
-          }
+        <div className="calendar-grid calendar-grid-large">
+          {month.cells.map((value, index) => {
+            if (!value) {
+              return <span key={`${month.key}-blank-${index}`} className="calendar-blank" />
+            }
 
-          const isPast = value < todayKey
-          const isSelected = selected.has(value)
+            const isPast = value < todayKey
+            const isSelected = selected.has(value)
 
-          return (
-            <button
-              key={value}
-              type="button"
-              className={`date-cell date-cell-large ${isSelected ? 'date-cell-selected' : ''}`}
-              disabled={isPast}
-              onClick={() => onToggleDate(value)}
-              aria-pressed={isSelected}
-              title={formatDayLabel(value)}
-            >
-              <span>{Number(value.slice(-2))}</span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`date-cell date-cell-large ${isSelected ? 'date-cell-selected' : ''}`}
+                disabled={isPast}
+                onClick={() => onToggleDate(value)}
+                aria-pressed={isSelected}
+                title={formatDayLabel(value)}
+              >
+                <span>{Number(value.slice(-2))}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
@@ -1191,6 +1195,8 @@ function SelectMenu({
 }: SelectMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const selectedOptionRef = useRef<HTMLButtonElement | null>(null)
   const selectedOption = options.find((option) => option.value === value) || options[0]
 
   useEffect(() => {
@@ -1213,6 +1219,26 @@ function SelectMenu({
       document.removeEventListener('keydown', onEscape)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const menu = menuRef.current
+      const selected = selectedOptionRef.current
+      if (!menu || !selected) {
+        return
+      }
+
+      const targetScrollTop = selected.offsetTop - (menu.clientHeight - selected.clientHeight) / 2
+      const maxScrollTop = menu.scrollHeight - menu.clientHeight
+      menu.scrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop))
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [isOpen, options, value])
 
   return (
     <div className="select-menu" ref={rootRef}>
@@ -1238,13 +1264,14 @@ function SelectMenu({
       </button>
 
       {isOpen && (
-        <div className={menuClassName || 'select-menu-surface'} role="listbox" aria-label={ariaLabel}>
+        <div className={menuClassName || 'select-menu-surface'} role="listbox" aria-label={ariaLabel} ref={menuRef}>
           {options.map((option) => (
             <button
               key={option.value}
               type="button"
               role="option"
               aria-selected={option.value === value}
+              ref={option.value === value ? selectedOptionRef : undefined}
               className={`${optionClassName || 'select-menu-option'} ${
                 option.value === value ? 'select-menu-option-active' : ''
               }`}
@@ -1550,10 +1577,6 @@ function formatTimeZoneLabel(timeZone: string): string {
   } catch {
     return timeZone
   }
-}
-
-function formatTimeRange(start: string, end: string): string {
-  return `${formatMinutes(timeToMinutes(start))} - ${formatMinutes(timeToMinutes(end))}`
 }
 
 function formatMinutes(totalMinutes: number): string {
