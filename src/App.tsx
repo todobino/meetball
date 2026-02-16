@@ -912,9 +912,6 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
           </article>
         ))}
       </div>
-      <div className="public-responses-footer">
-        <p className="public-timezone-text">Slots shown in {viewerTimeZoneLabel}</p>
-      </div>
     </>
   )
 

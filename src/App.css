@@ -742,22 +742,6 @@
   color: #0f5f59;
 }
 
-.public-responses-footer {
-  margin-top: auto;
-  padding-top: 0.6rem;
-  background: #eef2f4;
-  border-radius: 0.62rem;
-  padding-bottom: 0.6rem;
-}
-
-.public-timezone-text {
-  margin: 0;
-  text-align: center;
-  color: #3b5462;
-  font-size: 0.84rem;
-  font-weight: 700;
-}
-
 .public-responses-close-button {
   width: 2rem;
   height: 2rem;
