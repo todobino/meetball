@@ -151,7 +151,7 @@ function App() {
             <span className="material-symbols-rounded new-meeting-icon" aria-hidden="true">
               add
             </span>
-            <span>Create New Meeting</span>
+            <span>New Meeting</span>
           </button>
         </header>
 
@@ -827,11 +827,16 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
             </button>
           )}
           {!isAddingResponse && (
-            <button type="button" className="secondary-button nav-button" onClick={copyShareLink}>
+            <button
+              type="button"
+              className="secondary-button nav-button public-share-button"
+              onClick={copyShareLink}
+              aria-label="Share meeting link"
+            >
               <span className="material-symbols-rounded button-icon" aria-hidden="true">
                 share
               </span>
-              <span>Share</span>
+              <span className="public-share-button-label">Share</span>
             </button>
           )}
           {isAddingResponse && (
@@ -847,7 +852,7 @@ function PublicMeetingView({ meeting, onSubmitResponse }: PublicMeetingViewProps
             <span className="material-symbols-rounded button-icon" aria-hidden="true">
               {isAddingResponse ? 'check' : 'add'}
             </span>
-            <span>{isAddingResponse ? 'Confirm Response' : 'Add Response'}</span>
+            <span>{isAddingResponse ? 'Confirm Response' : 'Respond'}</span>
           </button>
         </div>
       </div>
