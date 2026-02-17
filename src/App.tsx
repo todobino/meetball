@@ -935,7 +935,7 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
       <div className="public-top-row">
         <div className="public-title-block">
           <h1>{meeting.title}</h1>
-          <p>Slots shown in {viewerTimeZoneLabel}</p>
+          <p>{viewerTimeZoneLabel}</p>
         </div>
         <div className="public-share-action">
           {!isAddingResponse && (
@@ -948,6 +948,7 @@ function PublicMeetingView({ meeting, mobileActionRoot, onSubmitResponse }: Publ
               <span className="material-symbols-rounded button-icon" aria-hidden="true">
                 share
               </span>
+              <span>Share</span>
             </button>
           )}
           {isAddingResponse && (
